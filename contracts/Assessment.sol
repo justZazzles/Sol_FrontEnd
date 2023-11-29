@@ -1,256 +1,92 @@
-import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import atm_abi from "../artifacts/contracts/Assessment.sol/Assessment.json";
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
 
-export default function HomePage() {
-  const [ethWallet, setEthWallet] = useState(undefined);
-  const [walletBalance, setWalletBalance] = useState(undefined);
-  const [account, setAccount] = useState(undefined);
-  const [atm, setATM] = useState(undefined);
-  const [balance, setBalance] = useState(undefined);
-  const [ownerError, setOwnerError] = useState(false);
+//import "hardhat/console.sol";
 
-  const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-  const atmABI = atm_abi.abi;
+contract Assessment {
+    address payable public owner;
+    uint256 public balance;
 
-  const getWallet = async () => {
-    if (window.ethereum) {
-      setEthWallet(window.ethereum);
+    event Deposit(uint256 amount);
+    event Withdraw(uint256 amount);
+    event BalanceMultiplied(uint256 previousBalance, uint256 newBalance);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    constructor(uint initBalance) payable {
+        owner = payable(msg.sender);
+        balance = initBalance;
     }
 
-    if (ethWallet) {
-      const accounts = await ethWallet.request({ method: "eth_accounts" });
-      handleAccount(accounts);
-    }
-  };
-
-  const handleAccount = (accounts) => {
-    if (accounts && accounts.length > 0) {
-      console.log("Account connected: ", accounts[0]);
-      setAccount(accounts[0]);
-    } else {
-      console.log("No account found");
-    }
-  };
-
-  const connectAccount = async () => {
-    if (!ethWallet) {
-      alert("MetaMask wallet is required to connect");
-      return;
+    function getBalance() public view returns (uint256) {
+        return balance;
     }
 
-    const accounts = await ethWallet.request({ method: "eth_requestAccounts" });
-    handleAccount(accounts);
+    function deposit(uint256 _amount) public payable {
+        uint256 _previousBalance = balance;
 
-    // once wallet is set, we can get a reference to our deployed contract
-    getATMContract();
-  };
+        // make sure this is the owner
+        require(msg.sender == owner, "You are not the owner of this account");
 
-  const getATMContract = () => {
-    const provider = new ethers.providers.Web3Provider(ethWallet);
-    const signer = provider.getSigner();
-    const atmContract = new ethers.Contract(contractAddress, atmABI, signer);
+        // perform transaction
+        balance += _amount;
 
-    setATM(atmContract);
-  };
+        // assert transaction completed successfully
+        assert(balance == _previousBalance + _amount);
 
-  const getBalance = async () => {
-    if (atm) {
-      const atmBalance = (await atm.getBalance()).toNumber();
-      setBalance(atmBalance);
-
-      if (account) {
-        const provider = new ethers.providers.Web3Provider(ethWallet);
-        const wallet = provider.getSigner(account);
-        const walletBalance = ethers.utils.formatEther(await wallet.getBalance());
-        setWalletBalance(walletBalance);
-      }
-    }
-  };
-
-  const deposit = async () => {
-    if (atm) {
-      let tx = await atm.deposit(1);
-      await tx.wait();
-      getBalance();
-    }
-  };
-  const deposit5 = async () => {
-    if (atm) {
-      let tx = await atm.deposit(5);
-      await tx.wait();
-      getBalance();
-    }
-  };
-  const deposit10 = async () => {
-    if (atm) {
-      let tx = await atm.deposit(10);
-      await tx.wait();
-      getBalance();
-    }
-  };
-  const deposit20 = async () => {
-    if (atm) {
-      let tx = await atm.deposit(20);
-      await tx.wait();
-      getBalance();
-    }
-  };
-
-
-  const withdraw = async () => {
-    if (atm) {
-      let tx = await atm.withdraw(1);
-      await tx.wait();
-      getBalance();
-    }
-  };
-  const withdraw5 = async () => {
-    if (atm) {
-      let tx = await atm.withdraw(5);
-      await tx.wait();
-      getBalance();
-    }
-  };
-  const withdraw10 = async () => {
-    if (atm) {
-      let tx = await atm.withdraw(10);
-      await tx.wait();
-      getBalance();
-    }
-  };
-  const withdraw20 = async () => {
-    if (atm) {
-      let tx = await atm.withdraw(20);
-      await tx.wait();
-      getBalance();
-    }
-  };
-  const multiplyValue = async () => {
-    if (atm) {
-      try {
-        const tx = await atm.multiplyBalance(2); 
-        await tx.wait();
-        getBalance();
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  };
-  const multiplyValue3 = async () => {
-    if (atm) {
-      try {
-        const tx = await atm.multiplyBalance(3); 
-        await tx.wait();
-        getBalance();
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  };
-  const multiplyValue4 = async () => {
-    if (atm) {
-      try {
-        const tx = await atm.multiplyBalance(4);
-        await tx.wait();
-        getBalance();
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  };
-
-  const transferOwnership = async (newOwner) => {
-    if (atm && newOwner) {
-      try {
-        let tx = await atm.transferOwnership(newOwner);
-        await tx.wait();
-        alert(`Ownership transferred to ${newOwner}`);
-      } catch (error) {
-        setOwnerError(true);
-        setTimeout(() => {
-          setOwnerError(false);
-        }, 5000);
-      }
-    }
-  };
-
-  const initUser = () => {
-    // Check to see if user has Metamask
-    if (!ethWallet) {
-      return <p>Please install Metamask in order to use this ATM.</p>;
+        // emit the event
+        emit Deposit(_amount);
     }
 
-    // Check to see if user is connected. If not, connect to their account
-    if (!account) {
-      return (
-        <button onClick={connectAccount}>
-          Please connect your Metamask wallet
-        </button>
-      );
-    }
+    // custom error
+    error InsufficientBalance(uint256 balance, uint256 withdrawAmount);
 
-    if (balance === undefined) {
-      getBalance();
-    }
-
-    return (
-      <div>
-        <p>Current Account: {account}</p>
-        <p>Metamask Balance: {walletBalance} ETH</p>
-        <p>ATM Balance: {balance} ETH</p>
-
-        <button
-          onClick={() => {
-            const newOwner = prompt("Enter the new owner address:");
-            transferOwnership(newOwner);
-          }}
-        >
-          Change Owner
-        </button>
-        {ownerError && <p className="error">Error: Unable to change the Owner</p>}<br/><br/>
-
-        <label>Deposit ATM: &nbsp;&nbsp;&nbsp;</label>
-        <button onClick={deposit}> 1 ETH</button>
-        <button onClick={deposit5}> 5 ETH</button>
-        <button onClick={deposit10}> 10 ETH</button>
-        <button onClick={deposit20}> 20 ETH</button><br/>
-        
-        <label>Withdraw ATM: </label>
-        <button onClick={withdraw}> 1 ETH</button>
-        <button onClick={withdraw5}> 5 ETH</button>
-        <button onClick={withdraw10}> 10 ETH</button>
-        <button onClick={withdraw20}> 20 ETH</button><br/>
-
-        <label>Multiply Balance : </label>
-        <button onClick={multiplyValue}> 2x</button>
-        <button onClick={multiplyValue3}> 3x</button>
-        <button onClick={multiplyValue4}> 4x</button><br/><br/>
-
-        
-      </div>
-    );
-  };
-
-  useEffect(() => {
-    getWallet();
-  }, []);
-
-  return (
-        <main className="container">
-      <header><h1>Welcome to the ATM!</h1></header>
-      {initUser()}
-      <style jsx>{`
-        .container {
-          text-align: center;
-          background-color: white;
-          color: black;
-          border-style: solid;
-          border-width: 8px;
-          
+    function withdraw(uint256 _withdrawAmount) public {
+        require(msg.sender == owner, "You are not the owner of this account");
+        uint256 _previousBalance = balance;
+        if (balance < _withdrawAmount) {
+            revert InsufficientBalance({balance: balance, withdrawAmount: _withdrawAmount});
         }
-      `}
-      </style>
-    </main>
-  );
+
+        // withdraw the given amount
+        balance -= _withdrawAmount;
+
+        // assert the balance is correct
+        assert(balance == (_previousBalance - _withdrawAmount));
+
+        // emit the event
+        emit Withdraw(_withdrawAmount);
+    }
+
+    function multiplyBalance(uint256 _multiplier) public {
+        // make sure this is the owner
+        require(msg.sender == owner, "You are not the owner of this account");
+
+        uint256 _previousBalance = balance;
+
+        // multiply the balance
+        balance *= _multiplier;
+
+        // assert the balance is correct
+        assert(balance == _previousBalance * _multiplier);
+
+        // emit the event
+        emit BalanceMultiplied(_previousBalance, balance);
+    }
+
+    function transferOwnership(address payable _newOwner) public {
+        // make sure this is the owner
+        require(msg.sender == owner, "You are not the owner of this account");
+
+        // validate the new owner address
+        require(_newOwner != address(0), "Invalid new owner address");
+
+        // store the previous owner
+        address payable _previousOwner = owner;
+
+        // update the owner
+        owner = _newOwner;
+
+        // emit the event
+        emit OwnershipTransferred(_previousOwner, _newOwner);
+    }
 }
