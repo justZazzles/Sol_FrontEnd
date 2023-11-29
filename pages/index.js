@@ -8,6 +8,7 @@ export default function HomePage() {
   const [account, setAccount] = useState(undefined);
   const [atm, setATM] = useState(undefined);
   const [balance, setBalance] = useState(undefined);
+  const [ownerError, setOwnerError] = useState(false);
 
   const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const atmABI = atm_abi.abi;
@@ -125,6 +126,54 @@ export default function HomePage() {
       getBalance();
     }
   };
+  const multiplyValue = async () => {
+    if (atm) {
+      try {
+        const tx = await atm.multiplyBalance(2); 
+        await tx.wait();
+        getBalance();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+  const multiplyValue3 = async () => {
+    if (atm) {
+      try {
+        const tx = await atm.multiplyBalance(3); 
+        await tx.wait();
+        getBalance();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+  const multiplyValue4 = async () => {
+    if (atm) {
+      try {
+        const tx = await atm.multiplyBalance(4);
+        await tx.wait();
+        getBalance();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+
+  const transferOwnership = async (newOwner) => {
+    if (atm && newOwner) {
+      try {
+        let tx = await atm.transferOwnership(newOwner);
+        await tx.wait();
+        alert(`Ownership transferred to ${newOwner}`);
+      } catch (error) {
+        setOwnerError(true);
+        setTimeout(() => {
+          setOwnerError(false);
+        }, 5000);
+      }
+    }
+  };
 
   const initUser = () => {
     // Check to see if user has Metamask
@@ -151,6 +200,16 @@ export default function HomePage() {
         <p>Metamask Balance: {walletBalance} ETH</p>
         <p>ATM Balance: {balance} ETH</p>
 
+        <button
+          onClick={() => {
+            const newOwner = prompt("Enter the new owner address:");
+            transferOwnership(newOwner);
+          }}
+        >
+          Change Owner
+        </button>
+        {ownerError && <p className="error">Error: Unable to change the Owner</p>}<br/><br/>
+
         <label>Deposit ATM: &nbsp;&nbsp;&nbsp;</label>
         <button onClick={deposit}> 1 ETH</button>
         <button onClick={deposit5}> 5 ETH</button>
@@ -161,7 +220,14 @@ export default function HomePage() {
         <button onClick={withdraw}> 1 ETH</button>
         <button onClick={withdraw5}> 5 ETH</button>
         <button onClick={withdraw10}> 10 ETH</button>
-        <button onClick={withdraw20}> 20 ETH</button><br/><br/>
+        <button onClick={withdraw20}> 20 ETH</button><br/>
+
+        <label>Multiply Balance : </label>
+        <button onClick={multiplyValue}> 2x</button>
+        <button onClick={multiplyValue3}> 3x</button>
+        <button onClick={multiplyValue4}> 4x</button><br/><br/>
+
+        
       </div>
     );
   };
